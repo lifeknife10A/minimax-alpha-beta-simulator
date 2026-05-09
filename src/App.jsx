@@ -1096,23 +1096,6 @@ function TreeCanvas(props) {
 
     return (
         <div className="tree-canvas">
-            {searchMode ? (
-                <div className="question-strip">
-                    <span>Q3</span>
-                    <span>CO1 ; BL4</span>
-                    <strong>
-                        {props.stepAlgorithm === 'AO_STAR'
-                            ? 'Find the value of node ' +
-                              props.rootLabel +
-                              ' using AO* search algorithm.'
-                            : 'Find the least-cost path from node ' +
-                              props.rootLabel +
-                              ' using A* search algorithm.'}
-                    </strong>
-                    <span>[10]</span>
-                </div>
-            ) : null}
-
             {!props.focusMode ? (
                 <div className="graph-status-bar">
                     <span>{props.safetyMode ? 'Autosave active' : 'Autosave only'}</span>

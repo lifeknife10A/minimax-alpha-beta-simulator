@@ -517,50 +517,6 @@ button {
     font-weight: 800;
 }
 
-.question-strip {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: grid;
-    grid-template-columns: 54px 92px minmax(280px, 1fr) 48px;
-    align-items: stretch;
-    max-width: 900px;
-    margin: 0 0 14px;
-    overflow: hidden;
-    border: 2px solid var(--main-text);
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.86);
-    color: #111827;
-    box-shadow: 0 10px 22px var(--shadow-color);
-    backdrop-filter: blur(8px);
-}
-
-.dark-mode .question-strip {
-    background: rgba(238, 244, 251, 0.92);
-    color: #111827;
-}
-
-.question-strip span,
-.question-strip strong {
-    min-height: 54px;
-    display: flex;
-    align-items: center;
-    padding: 10px 12px;
-    border-right: 2px solid #111827;
-    font-size: 14px;
-}
-
-.question-strip strong {
-    font-size: 16px;
-    font-weight: 800;
-}
-
-.question-strip span:last-child {
-    justify-content: center;
-    border-right: 0;
-    font-weight: 800;
-}
-
 .tree-svg {
     display: block;
     filter: drop-shadow(0 18px 26px rgba(15, 23, 32, 0.08));
