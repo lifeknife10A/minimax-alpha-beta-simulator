@@ -299,6 +299,61 @@ export function clearSearchSimulationFromTree(node) {
     };
 }
 
+export function normalizeAStarTree(node) {
+    const cleanTree = clearSearchSimulationFromTree(node);
+
+    normalizeAStarNode(cleanTree, true);
+
+    return cleanTree;
+}
+
+function normalizeAStarNode(node, isRootNode) {
+    node.edgeRelation = isRootNode ? 'ROOT' : 'OR';
+
+    if (node.type !== 'GOAL') {
+        node.type = 'NODE';
+    }
+
+    for (
+        let childIndex = 0;
+        childIndex < node.children.length;
+        childIndex = childIndex + 1
+    ) {
+        normalizeAStarNode(node.children[childIndex], false);
+    }
+}
+
+export function normalizeAOStarTree(node) {
+    const cleanTree = clearSearchSimulationFromTree(node);
+
+    normalizeAOStarNode(cleanTree, true);
+
+    return cleanTree;
+}
+
+function normalizeAOStarNode(node, isRootNode) {
+    if (isRootNode) {
+        node.edgeRelation = 'ROOT';
+        node.edgeCost = 0;
+    } else if (node.edgeRelation !== 'AND') {
+        node.edgeRelation = 'OR';
+    }
+
+    if (node.children.length === 0) {
+        node.type = 'LEAF';
+    } else if (node.type !== 'AND' && node.type !== 'OR') {
+        node.type = 'OR';
+    }
+
+    for (
+        let childIndex = 0;
+        childIndex < node.children.length;
+        childIndex = childIndex + 1
+    ) {
+        normalizeAOStarNode(node.children[childIndex], false);
+    }
+}
+
 export function findNodeById(node, nodeId) {
     if (node.id === nodeId) {
         return node;
@@ -791,7 +846,7 @@ export function createAlphaBetaSteps(sourceTree, rootNodeType) {
 }
 
 export function createAStarSteps(sourceTree) {
-    const workingTree = clearSearchSimulationFromTree(sourceTree);
+    const workingTree = normalizeAStarTree(sourceTree);
     const steps = [];
     const openList = [];
     const closedIds = [];
@@ -912,7 +967,7 @@ export function createAStarSteps(sourceTree) {
 }
 
 export function createAOStarSteps(sourceTree) {
-    const workingTree = clearSearchSimulationFromTree(sourceTree);
+    const workingTree = normalizeAOStarTree(sourceTree);
     const steps = [];
 
     recordStep(

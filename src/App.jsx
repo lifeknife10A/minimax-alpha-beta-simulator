@@ -23,6 +23,8 @@ import {
     getNextNodeId,
     nodeCardHeight,
     nodeCardWidth,
+    normalizeAOStarTree,
+    normalizeAStarTree,
     removeNodeById,
 } from './treeTools';
 
@@ -94,35 +96,48 @@ function getAlgorithmLabel(algorithmName) {
     return 'AO*';
 }
 
+function prepareTreeForStepAlgorithm(sourceTree, algorithmName, rootNodeType) {
+    if (algorithmName === 'AO_STAR') {
+        return normalizeAOStarTree(sourceTree);
+    }
+
+    if (algorithmName === 'A_STAR') {
+        return normalizeAStarTree(sourceTree);
+    }
+
+    const typedTree = assignTreeTypes(cloneTree(sourceTree), 0, rootNodeType);
+
+    return clearSimulationFromTree(typedTree);
+}
+
 function App() {
     const [savedApplicationState] = useState(loadApplicationState);
+    const initialStepAlgorithm =
+        savedApplicationState.stepAlgorithm || 'ALPHA_BETA';
+    const initialRootNodeType = savedApplicationState.rootNodeType || 'MAX';
     const [tree, setTree] = useState(function setInitialTree() {
-        return savedApplicationState.tree || createExampleTree();
+        const savedTree = savedApplicationState.tree || createExampleTree();
+
+        return prepareTreeForStepAlgorithm(
+            savedTree,
+            initialStepAlgorithm,
+            initialRootNodeType
+        );
     });
-    const [rootNodeType, setRootNodeType] = useState(
-        savedApplicationState.rootNodeType || 'MAX'
-    );
+    const [rootNodeType, setRootNodeType] = useState(initialRootNodeType);
     const [selectedNodeId, setSelectedNodeId] = useState(
         savedApplicationState.selectedNodeId || 'A'
     );
-    const [stepAlgorithm, setStepAlgorithm] = useState(
-        savedApplicationState.stepAlgorithm || 'ALPHA_BETA'
-    );
-    const [steps, setSteps] = useState(savedApplicationState.steps || []);
-    const [currentStepIndex, setCurrentStepIndex] = useState(
-        typeof savedApplicationState.currentStepIndex === 'number'
-            ? savedApplicationState.currentStepIndex
-            : -1
-    );
+    const [stepAlgorithm, setStepAlgorithm] = useState(initialStepAlgorithm);
+    const [steps, setSteps] = useState([]);
+    const [currentStepIndex, setCurrentStepIndex] = useState(-1);
     const [darkMode, setDarkMode] = useState(
         savedApplicationState.darkMode === true
     );
     const [safetyMode, setSafetyMode] = useState(
         savedApplicationState.safetyMode !== false
     );
-    const [focusMode, setFocusMode] = useState(
-        savedApplicationState.focusMode === true
-    );
+    const [focusMode, setFocusMode] = useState(false);
     const [examPanelOpen, setExamPanelOpen] = useState(
         savedApplicationState.examPanelOpen === true
     );
@@ -264,12 +279,11 @@ function App() {
     }
 
     function applyEditedTree(editedTree, nextSelectedNodeId, nextRootNodeType) {
-        let cleanTree = clearSearchSimulationFromTree(editedTree);
-
-        if (!isSearchAlgorithm(stepAlgorithm)) {
-            const typedTree = assignTreeTypes(editedTree, 0, nextRootNodeType);
-            cleanTree = clearSimulationFromTree(typedTree);
-        }
+        const cleanTree = prepareTreeForStepAlgorithm(
+            editedTree,
+            stepAlgorithm,
+            nextRootNodeType
+        );
 
         setTree(cleanTree);
         setSelectedNodeId(nextSelectedNodeId);
@@ -303,7 +317,13 @@ function App() {
 
     function handleClearTree() {
         if (isSearchAlgorithm(stepAlgorithm)) {
-            setTree(createSingleSearchRootTree());
+            const cleanTree = prepareTreeForStepAlgorithm(
+                createSingleSearchRootTree(),
+                stepAlgorithm,
+                rootNodeType
+            );
+
+            setTree(cleanTree);
         } else {
             setRootNodeType('MAX');
             setTree(createSingleRootTree());
@@ -315,12 +335,11 @@ function App() {
     }
 
     function handleResetSimulation() {
-        let cleanTree = clearSearchSimulationFromTree(tree);
-
-        if (!isSearchAlgorithm(stepAlgorithm)) {
-            const typedTree = assignTreeTypes(tree, 0, rootNodeType);
-            cleanTree = clearSimulationFromTree(typedTree);
-        }
+        const cleanTree = prepareTreeForStepAlgorithm(
+            tree,
+            stepAlgorithm,
+            rootNodeType
+        );
 
         setTree(cleanTree);
         setFocusMode(false);
@@ -339,8 +358,16 @@ function App() {
 
     function handleStepAlgorithmChange(event) {
         const nextStepAlgorithm = event.target.value;
+        const cleanTree = prepareTreeForStepAlgorithm(
+            tree,
+            nextStepAlgorithm,
+            rootNodeType
+        );
 
         setStepAlgorithm(nextStepAlgorithm);
+        setTree(cleanTree);
+        setSelectedNodeId(cleanTree.id);
+        setFocusMode(false);
         clearPlayback();
     }
 
@@ -385,7 +412,8 @@ function App() {
     }
 
     function handleRunAStar() {
-        const newSteps = createAStarSteps(tree);
+        const cleanTree = normalizeAStarTree(tree);
+        const newSteps = createAStarSteps(cleanTree);
         const lastStepIndex = newSteps.length - 1;
 
         setStepAlgorithm('A_STAR');
@@ -397,7 +425,8 @@ function App() {
     }
 
     function handleRunAOStar() {
-        const newSteps = createAOStarSteps(tree);
+        const cleanTree = normalizeAOStarTree(tree);
+        const newSteps = createAOStarSteps(cleanTree);
         const lastStepIndex = newSteps.length - 1;
 
         setStepAlgorithm('AO_STAR');
@@ -1253,16 +1282,6 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
         }
 
         if (andChildren.length > 1) {
-            const firstChildCenter = getSearchNodeCenter(
-                layout.positions[andChildren[0].id]
-            );
-            const firstArcPoint = getPointOnSearchEdge(
-                parentCenter,
-                firstChildCenter,
-                78
-            );
-            let leftArcPoint = firstArcPoint;
-            let rightArcPoint = firstArcPoint;
             const andChildIds = [];
 
             for (
@@ -1270,33 +1289,10 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
                 childIndex < andChildren.length;
                 childIndex = childIndex + 1
             ) {
-                const childCenter = getSearchNodeCenter(
-                    layout.positions[andChildren[childIndex].id]
-                );
-                const arcPoint = getPointOnSearchEdge(
-                    parentCenter,
-                    childCenter,
-                    78
-                );
-
                 andChildIds.push(andChildren[childIndex].id);
-
-                if (arcPoint.xCoordinate < leftArcPoint.xCoordinate) {
-                    leftArcPoint = arcPoint;
-                }
-
-                if (arcPoint.xCoordinate > rightArcPoint.xCoordinate) {
-                    rightArcPoint = arcPoint;
-                }
             }
 
-            const middleArcPoint = {
-                xCoordinate:
-                    (leftArcPoint.xCoordinate + rightArcPoint.xCoordinate) / 2,
-                yCoordinate:
-                    (leftArcPoint.yCoordinate + rightArcPoint.yCoordinate) / 2,
-            };
-            const controlPoint = getOuterControlPoint(parentCenter, middleArcPoint);
+            const markerPoints = getAndMarkerPoints(parentCenter, andChildren, layout);
             const arcKey = node.id + '-and-arc-' + andChildIds.join('-');
 
             edgeElements.push(
@@ -1305,17 +1301,17 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
                     className="and-arc"
                     d={
                         'M ' +
-                        leftArcPoint.xCoordinate +
+                        markerPoints.startPoint.xCoordinate +
                         ' ' +
-                        leftArcPoint.yCoordinate +
+                        markerPoints.startPoint.yCoordinate +
                         ' Q ' +
-                        controlPoint.xCoordinate +
+                        markerPoints.controlPoint.xCoordinate +
                         ' ' +
-                        controlPoint.yCoordinate +
+                        markerPoints.controlPoint.yCoordinate +
                         ' ' +
-                        rightArcPoint.xCoordinate +
+                        markerPoints.endPoint.xCoordinate +
                         ' ' +
-                        rightArcPoint.yCoordinate
+                        markerPoints.endPoint.yCoordinate
                     }
                 />
             );
@@ -1324,8 +1320,8 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
                 <text
                     key={arcKey + '-label'}
                     className="and-arc-label"
-                    x={controlPoint.xCoordinate}
-                    y={controlPoint.yCoordinate + 8}
+                    x={markerPoints.controlPoint.xCoordinate}
+                    y={markerPoints.controlPoint.yCoordinate + 7}
                 >
                     AND
                 </text>
@@ -1334,48 +1330,65 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
     }
 }
 
-function getPointOnSearchEdge(parentCenter, childCenter, distanceFromParent) {
-    const xDistance = childCenter.xCoordinate - parentCenter.xCoordinate;
-    const yDistance = childCenter.yCoordinate - parentCenter.yCoordinate;
-    const edgeLength = Math.sqrt(
-        xDistance * xDistance + yDistance * yDistance
-    );
+function getAndMarkerPoints(parentCenter, andChildren, layout) {
+    let xDirectionTotal = 0;
+    let yDirectionTotal = 0;
 
-    if (edgeLength === 0) {
-        return {
-            xCoordinate: parentCenter.xCoordinate,
-            yCoordinate: parentCenter.yCoordinate,
-        };
+    for (
+        let childIndex = 0;
+        childIndex < andChildren.length;
+        childIndex = childIndex + 1
+    ) {
+        const childCenter = getSearchNodeCenter(
+            layout.positions[andChildren[childIndex].id]
+        );
+        const xDistance = childCenter.xCoordinate - parentCenter.xCoordinate;
+        const yDistance = childCenter.yCoordinate - parentCenter.yCoordinate;
+        const edgeLength = Math.sqrt(
+            xDistance * xDistance + yDistance * yDistance
+        );
+
+        if (edgeLength > 0) {
+            xDirectionTotal = xDirectionTotal + xDistance / edgeLength;
+            yDirectionTotal = yDirectionTotal + yDistance / edgeLength;
+        }
     }
 
-    const distanceScale = distanceFromParent / edgeLength;
+    let directionLength = Math.sqrt(
+        xDirectionTotal * xDirectionTotal +
+            yDirectionTotal * yDirectionTotal
+    );
+    let xDirection = 0;
+    let yDirection = 1;
 
-    return {
-        xCoordinate: parentCenter.xCoordinate + xDistance * distanceScale,
-        yCoordinate: parentCenter.yCoordinate + yDistance * distanceScale,
+    if (directionLength > 0) {
+        xDirection = xDirectionTotal / directionLength;
+        yDirection = yDirectionTotal / directionLength;
+    }
+
+    const xPerpendicular = -yDirection;
+    const yPerpendicular = xDirection;
+    const markerDistance = 76;
+    const markerDepth = 23;
+    const markerHalfWidth = Math.min(46, 24 + andChildren.length * 5);
+    const markerCenter = {
+        xCoordinate: parentCenter.xCoordinate + xDirection * markerDistance,
+        yCoordinate: parentCenter.yCoordinate + yDirection * markerDistance,
     };
-}
-
-function getOuterControlPoint(parentCenter, middleArcPoint) {
-    const xDistance = middleArcPoint.xCoordinate - parentCenter.xCoordinate;
-    const yDistance = middleArcPoint.yCoordinate - parentCenter.yCoordinate;
-    const distanceFromParent = Math.sqrt(
-        xDistance * xDistance + yDistance * yDistance
-    );
-
-    if (distanceFromParent === 0) {
-        return {
-            xCoordinate: middleArcPoint.xCoordinate,
-            yCoordinate: middleArcPoint.yCoordinate + 24,
-        };
-    }
-
-    const xDirection = xDistance / distanceFromParent;
-    const yDirection = yDistance / distanceFromParent;
 
     return {
-        xCoordinate: middleArcPoint.xCoordinate + xDirection * 24,
-        yCoordinate: middleArcPoint.yCoordinate + yDirection * 24,
+        startPoint: {
+            xCoordinate: markerCenter.xCoordinate - xPerpendicular * markerHalfWidth,
+            yCoordinate: markerCenter.yCoordinate - yPerpendicular * markerHalfWidth,
+        },
+        controlPoint: {
+            xCoordinate: markerCenter.xCoordinate + xDirection * markerDepth,
+            yCoordinate: markerCenter.yCoordinate + yDirection * markerDepth,
+        },
+        endPoint: {
+            xCoordinate: markerCenter.xCoordinate + xPerpendicular * markerHalfWidth,
+            yCoordinate: markerCenter.yCoordinate + yPerpendicular * markerHalfWidth,
+        },
     };
 }
 
