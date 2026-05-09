@@ -4,7 +4,7 @@
 
 Open the live simulator here:
 
-https://lifeknife10a.github.io/minimax-alpha-beta-simulator/
+https://lifeknife10a.github.io/ai-search-algorithm-simulator/
 
 This is a frontend-only React project made with Vite. It is an interactive
 academic simulator for learning Minimax, Alpha-Beta Pruning, A* search, and
@@ -13,7 +13,7 @@ AO* search using visual graph steps.
 ## Folder Structure
 
 ```text
-minimax-alpha-beta-simulator/
+ai-search-algorithm-simulator/
   index.html
   package.json
   README.md

@@ -1,5 +1,5 @@
 {
-  "name": "minimax-alpha-beta-simulator",
+  "name": "ai-search-algorithm-simulator",
   "version": "0.1.0",
   "private": true,
   "type": "module",
