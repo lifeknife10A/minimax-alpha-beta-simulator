@@ -609,18 +609,23 @@ button {
 .and-arc {
     fill: none;
     stroke: var(--purple-color);
-    stroke-width: 3;
+    stroke-width: 4;
     stroke-linecap: round;
-    stroke-dasharray: 6 6;
+    stroke-linejoin: round;
+    stroke-dasharray: 8 7;
+    filter: drop-shadow(0 0 5px rgba(133, 96, 203, 0.42));
+    animation:
+        edgeFadeIn 0.35s ease-out both,
+        dashFlow 1.6s linear infinite;
 }
 
 .and-arc-label {
     fill: var(--purple-color);
     paint-order: stroke;
     stroke: var(--canvas-background);
-    stroke-width: 5px;
+    stroke-width: 6px;
     stroke-linejoin: round;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     text-anchor: middle;
 }

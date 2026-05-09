@@ -1273,8 +1273,13 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
             const firstChildCenter = getSearchNodeCenter(
                 layout.positions[andChildren[0].id]
             );
-            let leftChildCenter = firstChildCenter;
-            let rightChildCenter = firstChildCenter;
+            const firstArcPoint = getPointOnSearchEdge(
+                parentCenter,
+                firstChildCenter,
+                78
+            );
+            let leftArcPoint = firstArcPoint;
+            let rightArcPoint = firstArcPoint;
             const andChildIds = [];
 
             for (
@@ -1285,21 +1290,30 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
                 const childCenter = getSearchNodeCenter(
                     layout.positions[andChildren[childIndex].id]
                 );
+                const arcPoint = getPointOnSearchEdge(
+                    parentCenter,
+                    childCenter,
+                    78
+                );
 
                 andChildIds.push(andChildren[childIndex].id);
 
-                if (childCenter.xCoordinate < leftChildCenter.xCoordinate) {
-                    leftChildCenter = childCenter;
+                if (arcPoint.xCoordinate < leftArcPoint.xCoordinate) {
+                    leftArcPoint = arcPoint;
                 }
 
-                if (childCenter.xCoordinate > rightChildCenter.xCoordinate) {
-                    rightChildCenter = childCenter;
+                if (arcPoint.xCoordinate > rightArcPoint.xCoordinate) {
+                    rightArcPoint = arcPoint;
                 }
             }
 
-            const arcY = parentCenter.yCoordinate + 58;
-            const labelX =
-                (leftChildCenter.xCoordinate + rightChildCenter.xCoordinate) / 2;
+            const middleArcPoint = {
+                xCoordinate:
+                    (leftArcPoint.xCoordinate + rightArcPoint.xCoordinate) / 2,
+                yCoordinate:
+                    (leftArcPoint.yCoordinate + rightArcPoint.yCoordinate) / 2,
+            };
+            const controlPoint = getOuterControlPoint(parentCenter, middleArcPoint);
             const arcKey = node.id + '-and-arc-' + andChildIds.join('-');
 
             edgeElements.push(
@@ -1308,17 +1322,17 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
                     className="and-arc"
                     d={
                         'M ' +
-                        leftChildCenter.xCoordinate +
+                        leftArcPoint.xCoordinate +
                         ' ' +
-                        arcY +
+                        leftArcPoint.yCoordinate +
                         ' Q ' +
-                        parentCenter.xCoordinate +
+                        controlPoint.xCoordinate +
                         ' ' +
-                        (arcY + 28) +
+                        controlPoint.yCoordinate +
                         ' ' +
-                        rightChildCenter.xCoordinate +
+                        rightArcPoint.xCoordinate +
                         ' ' +
-                        arcY
+                        rightArcPoint.yCoordinate
                     }
                 />
             );
@@ -1327,14 +1341,59 @@ function collectEdgeElements(node, layout, edgeElements, searchMode, stepAlgorit
                 <text
                     key={arcKey + '-label'}
                     className="and-arc-label"
-                    x={labelX}
-                    y={arcY + 35}
+                    x={controlPoint.xCoordinate}
+                    y={controlPoint.yCoordinate + 8}
                 >
                     AND
                 </text>
             );
         }
     }
+}
+
+function getPointOnSearchEdge(parentCenter, childCenter, distanceFromParent) {
+    const xDistance = childCenter.xCoordinate - parentCenter.xCoordinate;
+    const yDistance = childCenter.yCoordinate - parentCenter.yCoordinate;
+    const edgeLength = Math.sqrt(
+        xDistance * xDistance + yDistance * yDistance
+    );
+
+    if (edgeLength === 0) {
+        return {
+            xCoordinate: parentCenter.xCoordinate,
+            yCoordinate: parentCenter.yCoordinate,
+        };
+    }
+
+    const distanceScale = distanceFromParent / edgeLength;
+
+    return {
+        xCoordinate: parentCenter.xCoordinate + xDistance * distanceScale,
+        yCoordinate: parentCenter.yCoordinate + yDistance * distanceScale,
+    };
+}
+
+function getOuterControlPoint(parentCenter, middleArcPoint) {
+    const xDistance = middleArcPoint.xCoordinate - parentCenter.xCoordinate;
+    const yDistance = middleArcPoint.yCoordinate - parentCenter.yCoordinate;
+    const distanceFromParent = Math.sqrt(
+        xDistance * xDistance + yDistance * yDistance
+    );
+
+    if (distanceFromParent === 0) {
+        return {
+            xCoordinate: middleArcPoint.xCoordinate,
+            yCoordinate: middleArcPoint.yCoordinate + 24,
+        };
+    }
+
+    const xDirection = xDistance / distanceFromParent;
+    const yDirection = yDistance / distanceFromParent;
+
+    return {
+        xCoordinate: middleArcPoint.xCoordinate + xDirection * 24,
+        yCoordinate: middleArcPoint.yCoordinate + yDirection * 24,
+    };
 }
 
 function collectNodeElements(
